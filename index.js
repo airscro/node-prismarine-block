@@ -118,13 +118,23 @@ function provider (registry, { Biome, version }) {
 
       if (stateId === undefined && type !== undefined) {
         const b = registry.blocks[type]
-        // Make sure the block is actually valid and metadata is within valid bounds
-        this.stateId = b === undefined ? null : Math.min(b.minStateId + metadata, b.maxStateId)
+
+        if (version.type === 'pc') {
+          // Make sure the block is actually valid and metadata is within valid bounds
+          this.stateId = b === undefined ? null : Math.min(b.minStateId + metadata, b.maxStateId)
+        }else{
+          this.stateId = b === undefined ? null : b.states[this.metadata];
+        }
       }
 
       const blockEnum = registry.blocksByStateId[this.stateId]
       if (blockEnum) {
-        this.metadata = this.stateId - blockEnum.minStateId
+        if (version.type === 'pc') {
+          this.metadata = this.stateId - blockEnum.minStateId
+        }else{
+          this.metadata = blockEnum.states.indexOf(this.stateId);
+        }
+
         this.type = blockEnum.id
         this.name = blockEnum.name
         this.hardness = blockEnum.hardness
@@ -246,10 +256,11 @@ function provider (registry, { Biome, version }) {
           throw new Error('No matching block state found for ' + block.name + ' with properties ' + JSON.stringify(properties)) // This should not happen
         }
       } else if (version.type === 'bedrock') {
-        for (let stateId = block.minStateId; stateId <= block.maxStateId; stateId++) {
-          const state = registry.blockStates[stateId].states
-          if (Object.entries(properties).find(([prop, val]) => state[prop]?.value !== val)) continue
-          return new Block(undefined, biomeId, 0, stateId)
+        for (let index = 0; index < block.states.length; index++){
+            let stateId = block.states[index];
+            const state = registry.blockStates[stateId].states
+            if (Object.entries(properties).find(([prop, val]) => state[prop]?.value !== val)) continue
+            return new Block(undefined, biomeId, 0, stateId)
         }
         return block
       }
